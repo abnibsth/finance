@@ -1,0 +1,2 @@
+# finance
+latihan pertama kali
