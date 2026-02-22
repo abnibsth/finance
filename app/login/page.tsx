@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -193,26 +194,10 @@ export default function LoginPage() {
               {/* Sign Up Link */}
               <p className="mt-6 text-center text-sm text-gray-400">
                 New player?{' '}
-                <a href="#" className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors">
+                <Link href="/register" className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors">
                   Create an account
-                </a>
+                </Link>
               </p>
-            </div>
-          </div>
-
-          {/* Footer Stats */}
-          <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-            <div className="bg-slate-900/50 backdrop-blur-sm rounded-lg p-3 border border-slate-800">
-              <div className="text-2xl font-bold text-cyan-400">1.2K+</div>
-              <div className="text-xs text-gray-500">Active Players</div>
-            </div>
-            <div className="bg-slate-900/50 backdrop-blur-sm rounded-lg p-3 border border-slate-800">
-              <div className="text-2xl font-bold text-purple-400">$2.5M</div>
-              <div className="text-xs text-gray-500">Tracked</div>
-            </div>
-            <div className="bg-slate-900/50 backdrop-blur-sm rounded-lg p-3 border border-slate-800">
-              <div className="text-2xl font-bold text-pink-400">98%</div>
-              <div className="text-xs text-gray-500">Success Rate</div>
             </div>
           </div>
         </div>
