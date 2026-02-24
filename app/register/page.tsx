@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +15,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [success, setSuccess] = useState(false);
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -32,12 +35,32 @@ export default function RegisterPage() {
       setErrors(validationErrors);
       return;
     }
+
+    // Check if email already registered
+    const existing = JSON.parse(localStorage.getItem('fq_users') || '[]') as { email: string; username: string; password: string }[];
+    if (existing.find(u => u.email === email)) {
+      setErrors({ email: 'Email sudah terdaftar. Silakan login.' });
+      return;
+    }
+
     setErrors({});
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      console.log('Register attempt:', { username, email, password });
-    }, 1500);
+
+    // Simulate network delay
+    await new Promise(res => setTimeout(res, 1200));
+
+    // Save user to localStorage
+    const newUser = { username, email, password };
+    localStorage.setItem('fq_users', JSON.stringify([...existing, newUser]));
+
+    // Auto-login: save session
+    localStorage.setItem('fq_session', JSON.stringify({ username, email }));
+
+    setIsLoading(false);
+    setSuccess(true);
+
+    // Redirect to dashboard after brief success flash
+    setTimeout(() => router.push('/dashboard'), 1000);
   };
 
   return (
@@ -278,10 +301,20 @@ export default function RegisterPage() {
                   {errors.terms && <p className="text-xs text-red-400">{errors.terms}</p>}
                 </div>
 
+                {/* Success Banner */}
+                {success && (
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm animate-slideInUp">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Akun berhasil dibuat! Mengarahkan ke dashboard…</span>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || success}
                   className="w-full relative group/btn overflow-hidden rounded-lg bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 p-0.5 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="relative bg-slate-900 rounded-lg px-6 py-3 transition-all duration-300 group-hover/btn:bg-transparent">
@@ -292,7 +325,7 @@ export default function RegisterPage() {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          Creating Account...
+                          Membuat Akun…
                         </>
                       ) : (
                         <>

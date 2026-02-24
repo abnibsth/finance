@@ -27,41 +27,76 @@ body {
 
 /* Custom Gaming Animations */
 @keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
 }
 
 @keyframes tilt {
-  0%, 100% {
-    transform: rotate(-1deg);
-  }
-  50% {
-    transform: rotate(1deg);
-  }
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
 }
 
-.animate-blob {
-  animation: blob 7s infinite;
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-.animate-tilt {
-  animation: tilt 10s infinite linear;
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animation-delay-2000 {
-  animation-delay: 2s;
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(34,211,238,0.3); }
+  50% { box-shadow: 0 0 24px rgba(34,211,238,0.7); }
 }
 
-.animation-delay-4000 {
-  animation-delay: 4s;
+@keyframes fillBar {
+  from { width: 0%; }
+  to { width: var(--bar-width); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-blob { animation: blob 7s infinite; }
+.animate-tilt { animation: tilt 10s infinite linear; }
+.animate-shimmer { animation: shimmer 2.5s infinite linear; }
+.animate-slideInUp { animation: slideInUp 0.5s ease forwards; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-spin-slow { animation: spin-slow 8s linear infinite; }
+.animate-floatY { animation: floatY 3s ease-in-out infinite; }
+
+.animation-delay-100 { animation-delay: 0.1s; }
+.animation-delay-200 { animation-delay: 0.2s; }
+.animation-delay-300 { animation-delay: 0.3s; }
+.animation-delay-400 { animation-delay: 0.4s; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(15,23,42,0.5); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(34,211,238,0.3); border-radius: 2px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(34,211,238,0.6); }
+
+/* Glow text */
+.text-glow-cyan { text-shadow: 0 0 12px rgba(34,211,238,0.7); }
+.text-glow-purple { text-shadow: 0 0 12px rgba(168,85,247,0.7); }
+.text-glow-green { text-shadow: 0 0 12px rgba(74,222,128,0.7); }
+
+/* Glass card */
+.glass-card {
+  background: rgba(15,23,42,0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.08);
 }

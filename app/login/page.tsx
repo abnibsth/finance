@@ -2,20 +2,42 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError('');
     setIsLoading(true);
-    // Simulate login process
-    setTimeout(() => {
+
+    // Simulate network delay
+    await new Promise(res => setTimeout(res, 1200));
+
+    // Validate against stored users
+    const users = JSON.parse(localStorage.getItem('fq_users') || '[]') as { email: string; username: string; password: string }[];
+    const found = users.find(u => u.email === email && u.password === password);
+
+    if (!found) {
       setIsLoading(false);
-      console.log('Login attempt:', { email, password });
-    }, 1500);
+      setLoginError('Email atau password salah. Belum punya akun? Daftar dulu!');
+      return;
+    }
+
+    // Save session
+    localStorage.setItem('fq_session', JSON.stringify({ username: found.username, email: found.email }));
+
+    setIsLoading(false);
+    setSuccess(true);
+
+    // Redirect to dashboard
+    setTimeout(() => router.push('/dashboard'), 900);
   };
 
   return (
@@ -133,10 +155,30 @@ export default function LoginPage() {
                   </a>
                 </div>
 
+                {/* Error Message */}
+                {loginError && (
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm animate-slideInUp">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>{loginError}</span>
+                  </div>
+                )}
+
+                {/* Success Banner */}
+                {success && (
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm animate-slideInUp">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Login berhasil! Mengarahkan ke dashboard…</span>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || success}
                   className="w-full relative group/btn overflow-hidden rounded-lg bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 p-0.5 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="relative bg-slate-900 rounded-lg px-6 py-3 transition-all duration-300 group-hover/btn:bg-transparent">
@@ -147,7 +189,7 @@ export default function LoginPage() {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          Loading...
+                          Memverifikasi…
                         </>
                       ) : (
                         <>
