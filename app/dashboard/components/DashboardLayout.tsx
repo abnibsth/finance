@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 const navItems = [
   {
@@ -90,17 +91,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const now = useNow();
 
   useEffect(() => {
-    const session = localStorage.getItem('fq_session');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session) as { username: string; email: string };
-        if (parsed.username) setUsername(parsed.username);
-      } catch {}
-    }
-  }, []);
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', session.user.id)
+        .single();
+      if (profile?.username) setUsername(profile.username);
+    };
+    init();
+  }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('fq_session');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     router.push('/login');
   };
 

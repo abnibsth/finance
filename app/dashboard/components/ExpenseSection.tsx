@@ -1,38 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import StatCard from './StatCard';
+import { supabase } from '@/lib/supabase';
 
-const categories = [
-  { name: 'Makanan & Minuman', icon: '🍜', amount: 1800000, color: 'from-orange-500 to-orange-400', max: 2500000 },
-  { name: 'Transportasi', icon: '🚗', amount: 650000, color: 'from-blue-500 to-blue-400', max: 1000000 },
-  { name: 'Hiburan', icon: '🎮', amount: 450000, color: 'from-purple-500 to-purple-400', max: 800000 },
-  { name: 'Kesehatan', icon: '💊', amount: 300000, color: 'from-green-500 to-green-400', max: 500000 },
-  { name: 'Belanja', icon: '🛍️', amount: 900000, color: 'from-pink-500 to-pink-400', max: 1500000 },
-  { name: 'Tagihan', icon: '📄', amount: 750000, color: 'from-red-500 to-red-400', max: 1000000 },
-];
+type Expense = {
+  id: string;
+  description: string;
+  category: string;
+  amount: number;
+  date: string;
+};
 
-const recentExpenses = [
-  { id: 1, desc: 'Makan Siang', category: 'Makanan & Minuman', amount: 45000, date: '2026-02-24' },
-  { id: 2, desc: 'Bensin', category: 'Transportasi', amount: 100000, date: '2026-02-23' },
-  { id: 3, desc: 'Netflix', category: 'Hiburan', amount: 54000, date: '2026-02-22' },
-  { id: 4, desc: 'Obat', category: 'Kesehatan', amount: 75000, date: '2026-02-21' },
-  { id: 5, desc: 'Grab', category: 'Transportasi', amount: 35000, date: '2026-02-20' },
-];
+const categoryMeta: Record<string, { icon: string; color: string }> = {
+  'Makanan & Minuman': { icon: '🍜', color: 'from-orange-500 to-orange-400' },
+  'Transportasi': { icon: '🚗', color: 'from-blue-500 to-blue-400' },
+  'Hiburan': { icon: '🎮', color: 'from-purple-500 to-purple-400' },
+  'Kesehatan': { icon: '💊', color: 'from-green-500 to-green-400' },
+  'Belanja': { icon: '🛍️', color: 'from-pink-500 to-pink-400' },
+  'Tagihan': { icon: '📄', color: 'from-red-500 to-red-400' },
+  'Lainnya': { icon: '💳', color: 'from-gray-500 to-gray-400' },
+};
 
-// Format angka dengan titik ribuan: 100000 → "100.000"
 function formatRupiah(raw: string): string {
   const digits = raw.replace(/\D/g, '');
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 export default function ExpenseSection() {
-  const [expenses, setExpenses] = useState(recentExpenses);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ desc: '', category: 'Makanan & Minuman', amount: '', date: '' });
+  const [form, setForm] = useState({ description: '', category: 'Makanan & Minuman', amount: '', date: '' });
   const [amountDisplay, setAmountDisplay] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const total = categories.reduce((s, c) => s + c.amount, 0);
+  const total = expenses.reduce((s, e) => s + e.amount, 0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from('pengeluaran')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('date', { ascending: false });
+      if (data) setExpenses(data);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\./g, '').replace(/\D/g, '');
@@ -41,16 +60,43 @@ export default function ExpenseSection() {
   };
 
   const resetModal = () => {
-    setForm({ desc: '', category: 'Makanan & Minuman', amount: '', date: '' });
+    setForm({ description: '', category: 'Makanan & Minuman', amount: '', date: '' });
     setAmountDisplay('');
     setShowModal(false);
   };
 
-  const handleAdd = () => {
-    if (!form.desc || !form.amount || !form.date) return;
-    setExpenses(prev => [...prev, { id: Date.now(), ...form, amount: parseInt(form.amount) }]);
+  const handleAdd = async () => {
+    if (!form.description || !form.amount || !form.date) return;
+    setSaving(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data, error } = await supabase.from('pengeluaran').insert({
+      user_id: session.user.id,
+      description: form.description,
+      category: form.category,
+      amount: parseInt(form.amount),
+      date: form.date,
+    }).select().single();
+    if (!error && data) {
+      setExpenses(prev => [data, ...prev]);
+    }
+    setSaving(false);
     resetModal();
   };
+
+  const handleDelete = async (id: string) => {
+    await supabase.from('pengeluaran').delete().eq('id', id);
+    setExpenses(prev => prev.filter(e => e.id !== id));
+  };
+
+  // Group by category for breakdown
+  const categoryTotals = Object.keys(categoryMeta).map(cat => ({
+    name: cat,
+    ...categoryMeta[cat],
+    amount: expenses.filter(e => e.category === cat).reduce((s, e) => s + e.amount, 0),
+  })).filter(c => c.amount > 0);
+
+  const maxCat = Math.max(...categoryTotals.map(c => c.amount), 1);
 
   return (
     <section id="pengeluaran" className="space-y-6">
@@ -77,7 +123,7 @@ export default function ExpenseSection() {
       <StatCard
         label="Total Pengeluaran Bulan Ini"
         value={total}
-        trend={-8}
+        trend={0}
         gradient="from-pink-500 to-rose-500"
         glowColor="rgba(244,114,182,0.2)"
         icon={
@@ -91,49 +137,67 @@ export default function ExpenseSection() {
         {/* Category Breakdown */}
         <div className="glass-card rounded-2xl p-5">
           <h3 className="text-white font-semibold mb-4 text-sm">Breakdown Kategori</h3>
-          <div className="space-y-3">
-            {categories.map((cat) => {
-              const pct = Math.round((cat.amount / cat.max) * 100);
-              return (
-                <div key={cat.name}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-gray-300 text-xs flex items-center gap-2">
-                      <span>{cat.icon}</span>{cat.name}
-                    </span>
-                    <span className="text-gray-400 text-xs">Rp{(cat.amount / 1000).toFixed(0)}rb / Rp{(cat.max / 1000).toFixed(0)}rb</span>
+          {loading ? (
+            <div className="text-gray-500 text-sm text-center py-6">Memuat data…</div>
+          ) : categoryTotals.length === 0 ? (
+            <div className="text-gray-500 text-sm text-center py-6">Belum ada pengeluaran</div>
+          ) : (
+            <div className="space-y-3">
+              {categoryTotals.map((cat) => {
+                const pct = Math.round((cat.amount / maxCat) * 100);
+                return (
+                  <div key={cat.name}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-gray-300 text-xs flex items-center gap-2">
+                        <span>{cat.icon}</span>{cat.name}
+                      </span>
+                      <span className="text-gray-400 text-xs">Rp {cat.amount.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full bg-gradient-to-r ${cat.color} transition-all duration-1000 animate-slideInUp`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full bg-gradient-to-r ${cat.color} transition-all duration-1000 animate-slideInUp`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Recent Expenses */}
         <div className="glass-card rounded-2xl p-5">
           <h3 className="text-white font-semibold mb-4 text-sm">Transaksi Terbaru</h3>
-          <div className="space-y-3 overflow-y-auto custom-scrollbar max-h-48">
-            {expenses.map((exp) => {
-              const cat = categories.find(c => c.name === exp.category);
-              return (
-                <div key={exp.id} className="flex items-center justify-between py-2 border-b border-slate-700/30 last:border-0">
+          {loading ? (
+            <div className="text-gray-500 text-sm text-center py-6">Memuat data…</div>
+          ) : expenses.length === 0 ? (
+            <div className="text-gray-500 text-sm text-center py-6">Belum ada pengeluaran</div>
+          ) : (
+            <div className="space-y-3 overflow-y-auto custom-scrollbar max-h-48">
+              {expenses.map((exp) => (
+                <div key={exp.id} className="flex items-center justify-between py-2 border-b border-slate-700/30 last:border-0 group">
                   <div className="flex items-center gap-3">
-                    <span className="text-lg">{categories.find(c => c.name === exp.category)?.icon || '💳'}</span>
+                    <span className="text-lg">{categoryMeta[exp.category]?.icon || '💳'}</span>
                     <div>
-                      <p className="text-white text-sm font-medium">{exp.desc}</p>
-                      <p className="text-gray-500 text-xs">{exp.date}</p>
+                      <p className="text-white text-sm font-medium">{exp.description}</p>
+                      <p className="text-gray-500 text-xs">{exp.date} · {exp.category}</p>
                     </div>
                   </div>
-                  <span className="text-pink-400 font-semibold text-sm">-Rp {exp.amount.toLocaleString('id-ID')}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-pink-400 font-semibold text-sm">-Rp {exp.amount.toLocaleString('id-ID')}</span>
+                    <button
+                      onClick={() => handleDelete(exp.id)}
+                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all text-xs"
+                      title="Hapus"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -144,42 +208,32 @@ export default function ExpenseSection() {
           <div className="relative glass-card rounded-2xl p-6 w-full max-w-md border border-pink-500/30 shadow-2xl shadow-pink-500/20 animate-slideInUp">
             <h3 className="text-white font-bold text-lg mb-5" style={{ textShadow: '0 0 10px rgba(244,114,182,0.6)' }}>Tambah Pengeluaran</h3>
             <div className="space-y-4">
-              {/* Keterangan */}
               <div>
                 <label className="block text-gray-300 text-sm mb-1">Keterangan</label>
                 <input type="text" placeholder="Makan siang, bensin..."
-                  value={form.desc}
-                  onChange={e => setForm(f => ({ ...f, desc: e.target.value }))}
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   className="w-full bg-slate-800/60 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500" />
               </div>
-              {/* Jumlah — auto-format titik ribuan */}
               <div>
                 <label className="block text-gray-300 text-sm mb-1">Jumlah (Rp)</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 text-sm font-medium pointer-events-none">Rp</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="0"
-                    value={amountDisplay}
-                    onChange={handleAmountChange}
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={amountDisplay} onChange={handleAmountChange}
                     className="w-full bg-slate-800/60 border border-slate-600 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500" />
                 </div>
               </div>
-              {/* Tanggal */}
               <div>
                 <label className="block text-gray-300 text-sm mb-1">Tanggal</label>
-                <input type="date"
-                  value={form.date}
-                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  className="w-full bg-slate-800/60 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500" />
+                <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full bg-slate-800/60 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
               </div>
-              {/* Kategori */}
               <div>
                 <label className="block text-gray-300 text-sm mb-1">Kategori</label>
                 <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                   className="w-full bg-slate-800/60 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500">
-                  {categories.map(c => <option key={c.name}>{c.name}</option>)}
+                  {Object.keys(categoryMeta).map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
             </div>
@@ -188,9 +242,9 @@ export default function ExpenseSection() {
                 className="flex-1 py-2.5 rounded-xl border border-slate-600 text-gray-400 text-sm hover:text-white transition-all">
                 Batal
               </button>
-              <button onClick={handleAdd}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-pink-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-pink-500/40 transition-all">
-                Simpan
+              <button onClick={handleAdd} disabled={saving}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-pink-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-pink-500/40 transition-all disabled:opacity-60">
+                {saving ? 'Menyimpan…' : 'Simpan'}
               </button>
             </div>
           </div>

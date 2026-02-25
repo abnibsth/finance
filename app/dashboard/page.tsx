@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 const quickNav = [
   { label: 'Pemasukan', href: '/dashboard/pemasukan', color: 'from-cyan-500 to-cyan-400', textColor: 'text-cyan-400', glow: '0 0 20px rgba(34,211,238,0.2)', icon: (
@@ -28,16 +29,46 @@ const quickNav = [
 
 export default function DashboardHome() {
   const [username, setUsername] = useState('Adventurer');
+  const [totalPemasukan, setTotalPemasukan] = useState(0);
+  const [totalPengeluaran, setTotalPengeluaran] = useState(0);
+  const [totalTabungan, setTotalTabungan] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const session = localStorage.getItem('fq_session');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session) as { username: string };
-        if (parsed.username) setUsername(parsed.username);
-      } catch {}
-    }
+    const fetchData = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const uid = session.user.id;
+
+      const [profileRes, pemasukanRes, pengeluaranRes, tabunganRes] = await Promise.all([
+        supabase.from('profiles').select('username').eq('id', uid).single(),
+        supabase.from('pemasukan').select('amount').eq('user_id', uid),
+        supabase.from('pengeluaran').select('amount').eq('user_id', uid),
+        supabase.from('tabungan').select('saved').eq('user_id', uid),
+      ]);
+
+      if (profileRes.data?.username) setUsername(profileRes.data.username);
+      if (pemasukanRes.data) setTotalPemasukan(pemasukanRes.data.reduce((s, r) => s + r.amount, 0));
+      if (pengeluaranRes.data) setTotalPengeluaran(pengeluaranRes.data.reduce((s, r) => s + r.amount, 0));
+      if (tabunganRes.data) setTotalTabungan(tabunganRes.data.reduce((s, r) => s + r.saved, 0));
+      setLoading(false);
+    };
+    fetchData();
   }, []);
+
+  const saldoBersih = totalPemasukan - totalPengeluaran;
+  const healthScore = totalPemasukan > 0
+    ? Math.min(100, Math.round(((saldoBersih / totalPemasukan) * 50) + (totalTabungan > 0 ? 30 : 0) + 20))
+    : 0;
+
+  const getHealthLabel = (score: number) => {
+    if (score >= 80) return { label: 'Sangat Baik 🌟', color: 'text-green-400' };
+    if (score >= 60) return { label: 'Baik 👍', color: 'text-yellow-400' };
+    if (score >= 40) return { label: 'Cukup ⚠️', color: 'text-orange-400' };
+    return { label: 'Perlu Perhatian 🔴', color: 'text-red-400' };
+  };
+
+  const health = getHealthLabel(healthScore);
 
   return (
     <div className="space-y-8 animate-slideInUp">
@@ -46,7 +77,7 @@ export default function DashboardHome() {
         <h2 className="text-3xl font-black text-white mb-1">
           Halo, <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">{username}</span> 🎮
         </h2>
-        <p className="text-gray-400 text-sm">Berikut ringkasan keuanganmu bulan Februari 2026.</p>
+        <p className="text-gray-400 text-sm">Berikut ringkasan keuanganmu.</p>
       </div>
 
       {/* Quick Stats */}
@@ -61,45 +92,54 @@ export default function DashboardHome() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <div className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-500/20 text-green-400">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                </svg>
-                +5%
-              </div>
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${saldoBersih >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                {saldoBersih >= 0 ? '▲' : '▼'}
+              </span>
             </div>
             <p className="text-gray-400 text-xs font-medium mb-1">Saldo Bersih</p>
-            <p className="text-white text-xl font-bold">Rp 7.500.000</p>
+            {loading ? (
+              <div className="h-6 w-24 bg-slate-700/50 rounded animate-pulse" />
+            ) : (
+              <p className={`text-xl font-bold ${saldoBersih >= 0 ? 'text-white' : 'text-red-400'}`}>
+                Rp {Math.abs(saldoBersih).toLocaleString('id-ID')}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Pemasukan quick */}
+        {/* Pemasukan */}
         <div className="relative group">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
           <div className="relative glass-card rounded-2xl p-5" style={{ boxShadow: '0 0 20px rgba(34,211,238,0.15)' }}>
             <p className="text-gray-400 text-xs mb-1">Pemasukan</p>
-            <p className="text-cyan-400 text-xl font-bold">Rp 12,35jt</p>
-            <p className="text-gray-500 text-xs mt-1">↑ 12% vs bulan lalu</p>
+            {loading ? <div className="h-6 w-20 bg-slate-700/50 rounded animate-pulse" /> : (
+              <p className="text-cyan-400 text-xl font-bold">Rp {(totalPemasukan / 1000000).toFixed(2)}jt</p>
+            )}
+            <p className="text-gray-500 text-xs mt-1">Total semua pemasukan</p>
           </div>
         </div>
 
-        {/* Pengeluaran quick */}
+        {/* Pengeluaran */}
         <div className="relative group">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
           <div className="relative glass-card rounded-2xl p-5" style={{ boxShadow: '0 0 20px rgba(244,114,182,0.15)' }}>
             <p className="text-gray-400 text-xs mb-1">Pengeluaran</p>
-            <p className="text-pink-400 text-xl font-bold">Rp 4,85jt</p>
-            <p className="text-gray-500 text-xs mt-1">↓ 8% vs bulan lalu</p>
+            {loading ? <div className="h-6 w-20 bg-slate-700/50 rounded animate-pulse" /> : (
+              <p className="text-pink-400 text-xl font-bold">Rp {(totalPengeluaran / 1000000).toFixed(2)}jt</p>
+            )}
+            <p className="text-gray-500 text-xs mt-1">Total semua pengeluaran</p>
           </div>
         </div>
 
-        {/* Tabungan quick */}
+        {/* Tabungan */}
         <div className="relative group">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-purple-400 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
           <div className="relative glass-card rounded-2xl p-5" style={{ boxShadow: '0 0 20px rgba(168,85,247,0.15)' }}>
             <p className="text-gray-400 text-xs mb-1">Tabungan</p>
-            <p className="text-purple-400 text-xl font-bold">Rp 37,7jt</p>
-            <p className="text-gray-500 text-xs mt-1">61% menuju target</p>
+            {loading ? <div className="h-6 w-20 bg-slate-700/50 rounded animate-pulse" /> : (
+              <p className="text-purple-400 text-xl font-bold">Rp {(totalTabungan / 1000000).toFixed(2)}jt</p>
+            )}
+            <p className="text-gray-500 text-xs mt-1">Total dana tersimpan</p>
           </div>
         </div>
       </div>
@@ -108,13 +148,20 @@ export default function DashboardHome() {
       <div className="glass-card rounded-2xl p-5">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-white font-semibold text-sm">Kesehatan Keuangan Bulan Ini</p>
+            <p className="text-white font-semibold text-sm">Kesehatan Keuangan</p>
             <p className="text-gray-500 text-xs mt-0.5">Berdasarkan pemasukan, pengeluaran, dan tabungan</p>
           </div>
-          <span className="text-yellow-400 font-black text-2xl">72<span className="text-base text-gray-500">/100</span></span>
+          {loading ? (
+            <div className="h-8 w-16 bg-slate-700/50 rounded animate-pulse" />
+          ) : (
+            <div className="text-right">
+              <span className="text-yellow-400 font-black text-2xl">{healthScore}<span className="text-base text-gray-500">/100</span></span>
+              <p className={`text-xs font-medium ${health.color}`}>{health.label}</p>
+            </div>
+          )}
         </div>
         <div className="h-3 bg-slate-700/50 rounded-full overflow-hidden">
-          <div className="h-full rounded-full bg-gradient-to-r from-pink-500 via-yellow-400 to-green-400 transition-all duration-1000" style={{ width: '72%' }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-pink-500 via-yellow-400 to-green-400 transition-all duration-1000" style={{ width: `${healthScore}%` }} />
         </div>
         <div className="flex justify-between text-xs text-gray-600 mt-1">
           <span>Kritis</span><span>Cukup</span><span>Baik</span><span>Sangat Baik</span>
@@ -126,11 +173,7 @@ export default function DashboardHome() {
         <h3 className="text-white font-bold text-sm mb-4 text-gray-400 uppercase tracking-widest">Menu Utama</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {quickNav.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="relative group block"
-            >
+            <Link key={item.label} href={item.href} className="relative group block">
               <div className={`absolute -inset-0.5 bg-gradient-to-r ${item.color} rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300`} />
               <div
                 className="relative glass-card rounded-2xl p-5 flex flex-col items-center gap-3 text-center hover:scale-105 transition-transform duration-200"
