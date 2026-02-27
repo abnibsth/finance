@@ -95,7 +95,7 @@ export default function IncomeSection() {
   return (
     <section id="pemasukan" className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-cyan-500/20">
             <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,11 +105,11 @@ export default function IncomeSection() {
           <h2 className="text-xl font-bold text-white text-glow-cyan">Pemasukan</h2>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900 font-semibold text-sm hover:shadow-lg hover:shadow-cyan-500/40 transition-all duration-200 hover:scale-105">
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900 font-semibold text-sm hover:shadow-lg hover:shadow-cyan-500/40 transition-all duration-200 hover:scale-105">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
-          Tambah Pemasukan
+          <span className="hidden sm:inline">Tambah Pemasukan</span><span className="sm:hidden">Tambah</span>
         </button>
       </div>
 
@@ -180,7 +180,7 @@ export default function IncomeSection() {
                     <span className="text-cyan-400 font-semibold text-sm">+Rp {inc.amount.toLocaleString('id-ID')}</span>
                     <button
                       onClick={() => handleDelete(inc.id)}
-                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all text-xs"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all text-xs"
                       title="Hapus"
                     >
                       ×

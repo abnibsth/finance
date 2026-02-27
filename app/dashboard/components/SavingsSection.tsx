@@ -54,9 +54,14 @@ export default function SavingsSection() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [form, setForm] = useState({ name: '', target: '', saved: '', icon: '🎯' });
+  const [editForm, setEditForm] = useState({ name: '', target: '', saved: '', icon: '🎯' });
   const [targetDisplay, setTargetDisplay] = useState('');
   const [savedDisplay, setSavedDisplay] = useState('');
+  const [editTargetDisplay, setEditTargetDisplay] = useState('');
+  const [editSavedDisplay, setEditSavedDisplay] = useState('');
   const [saving, setSaving] = useState(false);
 
   const totalSaved = goals.reduce((s, g) => s + g.saved, 0);
@@ -79,6 +84,7 @@ export default function SavingsSection() {
     fetchData();
   }, []);
 
+  // ── Add modal handlers ──
   const handleTargetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\./g, '').replace(/\D/g, '');
     setTargetDisplay(formatRupiah(raw));
@@ -119,6 +125,62 @@ export default function SavingsSection() {
     resetModal();
   };
 
+  // ── Edit modal handlers ──
+  const openEditModal = (goal: Goal) => {
+    setEditingGoal(goal);
+    setEditForm({
+      name: goal.name,
+      target: String(goal.target),
+      saved: String(goal.saved),
+      icon: goal.icon,
+    });
+    setEditTargetDisplay(formatRupiah(String(goal.target)));
+    setEditSavedDisplay(formatRupiah(String(goal.saved)));
+    setShowEditModal(true);
+  };
+
+  const handleEditTargetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\./g, '').replace(/\D/g, '');
+    setEditTargetDisplay(formatRupiah(raw));
+    setEditForm(f => ({ ...f, target: raw }));
+  };
+
+  const handleEditSavedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\./g, '').replace(/\D/g, '');
+    setEditSavedDisplay(formatRupiah(raw));
+    setEditForm(f => ({ ...f, saved: raw }));
+  };
+
+  const resetEditModal = () => {
+    setEditingGoal(null);
+    setEditForm({ name: '', target: '', saved: '', icon: '🎯' });
+    setEditTargetDisplay('');
+    setEditSavedDisplay('');
+    setShowEditModal(false);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingGoal || !editForm.name || !editForm.target) return;
+    setSaving(true);
+    const { data, error } = await supabase
+      .from('tabungan')
+      .update({
+        name: editForm.name,
+        target: parseInt(editForm.target),
+        saved: parseInt(editForm.saved) || 0,
+        icon: editForm.icon,
+      })
+      .eq('id', editingGoal.id)
+      .select()
+      .single();
+    if (!error && data) {
+      setGoals(prev => prev.map(g => g.id === editingGoal.id ? data : g));
+    }
+    setSaving(false);
+    resetEditModal();
+  };
+
+  // ── Delete handler ──
   const handleDelete = async (id: string) => {
     await supabase.from('tabungan').delete().eq('id', id);
     setGoals(prev => prev.filter(g => g.id !== id));
@@ -127,7 +189,7 @@ export default function SavingsSection() {
   return (
     <section id="tabungan" className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-purple-500/20">
             <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,11 +199,11 @@ export default function SavingsSection() {
           <h2 className="text-xl font-bold text-white text-glow-purple">Tabungan & Goals</h2>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-purple-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-purple-500/40 transition-all duration-200 hover:scale-105">
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-purple-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-purple-500/40 transition-all duration-200 hover:scale-105">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
-          Tambah Goal
+          <span className="hidden sm:inline">Tambah Goal</span><span className="sm:hidden">Tambah</span>
         </button>
       </div>
 
@@ -199,22 +261,34 @@ export default function SavingsSection() {
                       <p className="text-gray-500 text-xs">Target: Rp {(goal.target / 1000000).toFixed(1)}jt</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     {done && (
                       <span className="text-xs font-semibold text-green-400 bg-green-500/20 px-2 py-0.5 rounded-full">✓ Done</span>
                     )}
+                    {/* Edit button */}
+                    <button
+                      onClick={() => openEditModal(goal)}
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded-lg text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-all"
+                      title="Edit"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    {/* Delete button */}
                     <button
                       onClick={() => handleDelete(goal.id)}
-                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all text-sm"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all text-sm"
                       title="Hapus"
                     >
                       ×
                     </button>
                   </div>
                 </div>
+                {/* Saved amount display */}
                 <div className="mb-2">
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-400">Rp {(goal.saved / 1000000).toFixed(1)}jt</span>
+                    <span className="text-gray-400">Rp {goal.saved.toLocaleString('id-ID')}</span>
                     <span className={`font-semibold ${done ? 'text-green-400' : 'text-purple-400'}`}>{pct}%</span>
                   </div>
                   <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
@@ -224,13 +298,23 @@ export default function SavingsSection() {
                     />
                   </div>
                 </div>
+                {/* Quick add button */}
+                <button
+                  onClick={() => openEditModal(goal)}
+                  className="w-full mt-2 py-1.5 rounded-lg border border-slate-700/50 text-gray-400 hover:text-purple-400 hover:border-purple-500/30 transition-all text-xs flex items-center justify-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Update Tabungan
+                </button>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Modal */}
+      {/* ── Add Goal Modal ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetModal} />
@@ -274,6 +358,85 @@ export default function SavingsSection() {
               <button onClick={handleAdd} disabled={saving}
                 className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-purple-500/40 transition-all disabled:opacity-60">
                 {saving ? 'Menyimpan…' : 'Simpan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Goal Modal ── */}
+      {showEditModal && editingGoal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetEditModal} />
+          <div className="relative glass-card rounded-2xl p-6 w-full max-w-md border border-cyan-500/30 shadow-2xl shadow-cyan-500/20 animate-slideInUp">
+            <div className="flex items-center gap-3 mb-5">
+              <span className="text-2xl">{editingGoal.icon}</span>
+              <div>
+                <h3 className="text-white font-bold text-lg text-glow-cyan">Edit Goal</h3>
+                <p className="text-gray-500 text-xs">Update progres tabunganmu</p>
+              </div>
+            </div>
+
+            {/* Current progress indicator */}
+            <div className="glass-card rounded-xl p-3 mb-4 border border-slate-700/30">
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-gray-400">Progres saat ini</span>
+                <span className="text-purple-400 font-semibold">
+                  {Math.min(100, Math.round((editingGoal.saved / editingGoal.target) * 100))}%
+                </span>
+              </div>
+              <div className="h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${editingGoal.color} transition-all duration-500`}
+                  style={{ width: `${Math.min(100, Math.round((editingGoal.saved / editingGoal.target) * 100))}%` }}
+                />
+              </div>
+              <p className="text-gray-500 text-xs mt-1.5">
+                Rp {editingGoal.saved.toLocaleString('id-ID')} dari Rp {editingGoal.target.toLocaleString('id-ID')}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-300 text-sm mb-1">Nama Goal</label>
+                <input type="text" placeholder="Nama goal..."
+                  value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full bg-slate-800/60 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-1">Target (Rp)</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 text-sm font-medium pointer-events-none">Rp</span>
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={editTargetDisplay} onChange={handleEditTargetChange}
+                    className="w-full bg-slate-800/60 border border-slate-600 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-1 flex items-center gap-2">
+                  Sudah Ditabung (Rp)
+                  <span className="text-cyan-400 text-xs font-normal">← update di sini</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 text-sm font-medium pointer-events-none">Rp</span>
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={editSavedDisplay} onChange={handleEditSavedChange}
+                    className="w-full bg-slate-800/60 border border-cyan-500/30 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-1">Icon Emoji</label>
+                <input type="text" maxLength={2}
+                  value={editForm.icon} onChange={e => setEditForm(f => ({ ...f, icon: e.target.value }))}
+                  className="w-full bg-slate-800/60 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={resetEditModal}
+                className="flex-1 py-2.5 rounded-xl border border-slate-600 text-gray-400 text-sm hover:text-white transition-all">Batal</button>
+              <button onClick={handleUpdate} disabled={saving}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900 font-semibold text-sm hover:shadow-lg hover:shadow-cyan-500/40 transition-all disabled:opacity-60">
+                {saving ? 'Menyimpan…' : 'Update'}
               </button>
             </div>
           </div>

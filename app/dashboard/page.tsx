@@ -71,10 +71,10 @@ export default function DashboardHome() {
   const health = getHealthLabel(healthScore);
 
   return (
-    <div className="space-y-8 animate-slideInUp">
+    <div className="space-y-6 sm:space-y-8 animate-slideInUp">
       {/* Greeting */}
       <div>
-        <h2 className="text-3xl font-black text-white mb-1">
+        <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">
           Halo, <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">{username}</span> 🎮
         </h2>
         <p className="text-gray-400 text-sm">Berikut ringkasan keuanganmu.</p>

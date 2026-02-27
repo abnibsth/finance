@@ -54,7 +54,7 @@ export default function StatCard({ label, value, prefix = 'Rp', trend, icon, gra
           )}
         </div>
         <p className="text-gray-400 text-xs font-medium mb-1">{label}</p>
-        <p className="text-white text-xl font-bold tracking-tight">
+        <p className="text-white text-lg sm:text-xl font-bold tracking-tight">
           {prefix} {displayValue.toLocaleString('id-ID')}
         </p>
       </div>

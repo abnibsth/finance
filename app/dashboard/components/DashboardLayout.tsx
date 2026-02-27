@@ -62,14 +62,22 @@ const navItems = [
 ];
 
 const activeStyle: Record<string, string> = {
-  '/dashboard':           'bg-slate-700/60 text-white border-l-2 border-white',
-  '/dashboard/pemasukan': 'bg-cyan-500/15 text-cyan-400 border-l-2 border-cyan-400',
-  '/dashboard/pengeluaran': 'bg-pink-500/15 text-pink-400 border-l-2 border-pink-400',
-  '/dashboard/tabungan':  'bg-purple-500/15 text-purple-400 border-l-2 border-purple-400',
-  '/dashboard/saran':     'bg-yellow-500/15 text-yellow-400 border-l-2 border-yellow-400',
+  '/dashboard':           'bg-slate-700/60 text-white border-l-2 md:border-l-2 border-white',
+  '/dashboard/pemasukan': 'bg-cyan-500/15 text-cyan-400 border-l-2 md:border-l-2 border-cyan-400',
+  '/dashboard/pengeluaran': 'bg-pink-500/15 text-pink-400 border-l-2 md:border-l-2 border-pink-400',
+  '/dashboard/tabungan':  'bg-purple-500/15 text-purple-400 border-l-2 md:border-l-2 border-purple-400',
+  '/dashboard/saran':     'bg-yellow-500/15 text-yellow-400 border-l-2 md:border-l-2 border-yellow-400',
 };
 
 const iconStyle: Record<string, string> = {
+  '/dashboard':           'text-white',
+  '/dashboard/pemasukan': 'text-cyan-400',
+  '/dashboard/pengeluaran': 'text-pink-400',
+  '/dashboard/tabungan':  'text-purple-400',
+  '/dashboard/saran':     'text-yellow-400',
+};
+
+const bottomNavColor: Record<string, string> = {
   '/dashboard':           'text-white',
   '/dashboard/pemasukan': 'text-cyan-400',
   '/dashboard/pengeluaran': 'text-pink-400',
@@ -87,6 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [username, setUsername] = useState('Adventurer');
   const now = useNow();
 
@@ -107,12 +116,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     init();
   }, [router]);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
   };
 
-  const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const dateStr = now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
   // Page title derived from path
@@ -135,8 +149,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f10_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f10_1px,transparent_1px)] bg-[size:4rem_4rem]" />
       </div>
 
+      {/* ── Mobile Sidebar Overlay ── */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* ── Sidebar ── */}
-      <aside className={`fixed top-0 left-0 h-full z-30 flex flex-col transition-all duration-300 glass-card border-r border-slate-700/50 ${sidebarOpen ? 'w-60' : 'w-16'}`}>
+      <aside className={`
+        fixed top-0 left-0 h-full z-50 flex flex-col transition-all duration-300 glass-card border-r border-slate-700/50
+        ${/* Mobile: slide in/out */''}
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        w-60
+        ${/* Desktop: normal sidebar behavior */''}
+        md:translate-x-0 md:z-30
+        ${sidebarOpen ? 'md:w-60' : 'md:w-16'}
+      `}>
         {/* Logo */}
         <div className="flex items-center gap-3 p-4 border-b border-slate-700/50 h-16 flex-shrink-0">
           <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/30 animate-pulse-glow">
@@ -145,11 +175,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          {sidebarOpen && (
+          {(sidebarOpen || mobileMenuOpen) && (
             <span className="font-bold text-sm tracking-wide bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
               Finance Quest
             </span>
           )}
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="ml-auto p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-slate-700/40 transition-all md:hidden"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Nav */}
@@ -166,14 +205,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <span className={`flex-shrink-0 transition-colors ${isActive ? iconStyle[item.href] : 'group-hover:text-gray-200'}`}>
                   {item.icon}
                 </span>
-                {sidebarOpen && <span>{item.label}</span>}
+                {(sidebarOpen || mobileMenuOpen) && <span>{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        {/* Collapse toggle */}
-        <div className="p-3 border-t border-slate-700/50 flex-shrink-0">
+        {/* Collapse toggle — desktop only */}
+        <div className="p-3 border-t border-slate-700/50 flex-shrink-0 hidden md:block">
           <button
             onClick={() => setSidebarOpen(o => !o)}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-gray-500 hover:text-gray-300 hover:bg-slate-700/30 transition-all text-xs"
@@ -187,14 +226,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* ── Main ── */}
-      <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-60' : 'ml-16'} relative z-10 flex flex-col min-h-screen`}>
+      <main className={`flex-1 transition-all duration-300 relative z-10 flex flex-col min-h-screen pb-20 md:pb-0 ${sidebarOpen ? 'md:ml-60' : 'md:ml-16'}`}>
         {/* Header */}
-        <header className="sticky top-0 z-20 glass-card border-b border-slate-700/50 px-6 h-16 flex items-center justify-between flex-shrink-0">
-          <div>
-            <h1 className="text-white font-bold text-base hidden sm:block">{pageTitle}</h1>
-            <p className="text-gray-500 text-xs">{dateStr} · {timeStr} WIB</p>
+        <header className="sticky top-0 z-20 glass-card border-b border-slate-700/50 px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between flex-shrink-0 gap-2">
+          {/* Left side: hamburger + page info */}
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-slate-700/40 transition-all md:hidden flex-shrink-0"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-white font-bold text-sm sm:text-base truncate">{pageTitle}</h1>
+              <p className="text-gray-500 text-xs truncate whitespace-nowrap">{dateStr} · {timeStr} WIB</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Right side: notification + user + logout */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <button className="relative p-2 rounded-xl text-gray-400 hover:text-white hover:bg-slate-700/40 transition-all">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -202,7 +255,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </svg>
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
             </button>
-            <div className="flex items-center gap-2 pl-3 border-l border-slate-700/50">
+            <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-slate-700/50">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-purple-500/30">
                 {username.charAt(0).toUpperCase()}
               </div>
@@ -213,21 +266,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <button
               onClick={handleLogout}
-              className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 flex items-center gap-1 group"
+              className="text-xs text-gray-500 hover:text-red-400 transition-colors px-1 sm:px-2 flex items-center gap-1 group"
             >
               <svg className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </header>
 
         {/* Page content */}
-        <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
+        <div className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full">
           {children}
         </div>
       </main>
+
+      {/* ── Mobile Bottom Navigation ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 glass-card border-t border-slate-700/50 md:hidden">
+        <div className="flex items-center justify-around h-16 px-2">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200
+                  ${isActive ? bottomNavColor[item.href] : 'text-gray-500 hover:text-gray-300'}`}
+              >
+                <span className={`transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
+                  {item.icon}
+                </span>
+                <span className={`text-xs font-medium ${isActive ? '' : 'text-gray-500'}`}>
+                  {item.label.length > 6 ? item.label.substring(0, 5) + '.' : item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
