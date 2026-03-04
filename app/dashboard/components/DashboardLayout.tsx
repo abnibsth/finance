@@ -62,19 +62,19 @@ const navItems = [
 ];
 
 const activeStyle: Record<string, string> = {
-  '/dashboard':           'bg-slate-700/60 text-white border-l-2 md:border-l-2 border-white',
-  '/dashboard/pemasukan': 'bg-cyan-500/15 text-cyan-400 border-l-2 md:border-l-2 border-cyan-400',
-  '/dashboard/pengeluaran': 'bg-pink-500/15 text-pink-400 border-l-2 md:border-l-2 border-pink-400',
-  '/dashboard/tabungan':  'bg-purple-500/15 text-purple-400 border-l-2 md:border-l-2 border-purple-400',
-  '/dashboard/saran':     'bg-yellow-500/15 text-yellow-400 border-l-2 md:border-l-2 border-yellow-400',
+  '/dashboard':           'bg-slate-700/50 text-white border-l-2 border-white shadow-[inset_0_0_12px_rgba(255,255,255,0.04)]',
+  '/dashboard/pemasukan': 'bg-cyan-500/10 text-cyan-400 border-l-2 border-cyan-400 shadow-[inset_0_0_12px_rgba(34,211,238,0.06)]',
+  '/dashboard/pengeluaran': 'bg-pink-500/10 text-pink-400 border-l-2 border-pink-400 shadow-[inset_0_0_12px_rgba(244,114,182,0.06)]',
+  '/dashboard/tabungan':  'bg-purple-500/10 text-purple-400 border-l-2 border-purple-400 shadow-[inset_0_0_12px_rgba(168,85,247,0.06)]',
+  '/dashboard/saran':     'bg-yellow-500/10 text-yellow-400 border-l-2 border-yellow-400 shadow-[inset_0_0_12px_rgba(234,179,8,0.06)]',
 };
 
 const iconStyle: Record<string, string> = {
-  '/dashboard':           'text-white',
-  '/dashboard/pemasukan': 'text-cyan-400',
-  '/dashboard/pengeluaran': 'text-pink-400',
-  '/dashboard/tabungan':  'text-purple-400',
-  '/dashboard/saran':     'text-yellow-400',
+  '/dashboard':           'text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.6)]',
+  '/dashboard/pemasukan': 'text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]',
+  '/dashboard/pengeluaran': 'text-pink-400 drop-shadow-[0_0_6px_rgba(244,114,182,0.6)]',
+  '/dashboard/tabungan':  'text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.6)]',
+  '/dashboard/saran':     'text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)]',
 };
 
 const bottomNavColor: Record<string, string> = {
@@ -83,6 +83,14 @@ const bottomNavColor: Record<string, string> = {
   '/dashboard/pengeluaran': 'text-pink-400',
   '/dashboard/tabungan':  'text-purple-400',
   '/dashboard/saran':     'text-yellow-400',
+};
+
+const bottomNavGlow: Record<string, string> = {
+  '/dashboard':           'rgba(255,255,255,0.5)',
+  '/dashboard/pemasukan': 'rgba(34,211,238,0.7)',
+  '/dashboard/pengeluaran': 'rgba(244,114,182,0.7)',
+  '/dashboard/tabungan':  'rgba(168,85,247,0.7)',
+  '/dashboard/saran':     'rgba(234,179,8,0.7)',
 };
 
 function useNow() {
@@ -199,13 +207,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.id}
                 href={item.href}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative
                   ${isActive ? activeStyle[item.href] : 'text-gray-400 hover:text-gray-200 hover:bg-slate-700/30'}`}
               >
-                <span className={`flex-shrink-0 transition-colors ${isActive ? iconStyle[item.href] : 'group-hover:text-gray-200'}`}>
+                <span className={`flex-shrink-0 transition-all duration-200 ${isActive ? iconStyle[item.href] : 'group-hover:text-gray-200 group-hover:scale-110'}`}>
                   {item.icon}
                 </span>
-                {(sidebarOpen || mobileMenuOpen) && <span>{item.label}</span>}
+                {(sidebarOpen || mobileMenuOpen) && (
+                  <span className={`transition-all duration-200 ${isActive ? 'font-semibold' : ''}`}>{item.label}</span>
+                )}
+                {/* Active dot indicator when collapsed */}
+                {isActive && !sidebarOpen && !mobileMenuOpen && (
+                  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                )}
               </Link>
             );
           })}
@@ -291,13 +305,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.id}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200
+                className={`relative flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200
                   ${isActive ? bottomNavColor[item.href] : 'text-gray-500 hover:text-gray-300'}`}
               >
-                <span className={`transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
+                {/* Active top indicator */}
+                {isActive && (
+                  <span
+                    className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
+                    style={{ background: bottomNavGlow[item.href], boxShadow: `0 0 8px ${bottomNavGlow[item.href]}` }}
+                  />
+                )}
+                <span
+                  className={`transition-all duration-300 ${isActive ? 'scale-115 -translate-y-0.5' : ''}`}
+                  style={isActive ? { filter: `drop-shadow(0 0 6px ${bottomNavGlow[item.href]})` } : {}}
+                >
                   {item.icon}
                 </span>
-                <span className={`text-xs font-medium ${isActive ? '' : 'text-gray-500'}`}>
+                <span className={`text-xs transition-all duration-200 ${isActive ? 'font-bold' : 'font-medium text-gray-500'}`}>
                   {item.label.length > 6 ? item.label.substring(0, 5) + '.' : item.label}
                 </span>
               </Link>
